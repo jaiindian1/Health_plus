@@ -1,42 +1,31 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. FULL INTERFACE CLEANUP ---
+# --- 1. THE ARCHITECT'S INTERFACE ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
-# CSS: This is the "Invisibility Cloak" for all Streamlit branding
+# Improved CSS + Manifest Linking
 st.markdown("""
+    <head>
+        <link rel="manifest" href="./manifest.json?v=1">
+        <meta name="theme-color" content="#FF4B4B">
+    </head>
     <style>
-    /* Hides the top header (GitHub, Menu, etc.) */
-    header {visibility: hidden !important;}
-    /* Hides the footer */
-    footer {visibility: hidden !important;}
-    /* Hides the Deploy button */
-    .stDeployButton {display:none !important;}
-    /* Hides the small pencil and manage app button */
-    #viewer-badge {display: none !important;}
-    /* Centers the app and makes it look like a phone */
-    .stApp { 
-        max-width: 450px; 
-        margin: 0 auto; 
-        border-left: 1px solid #f0f0f0; 
-        border-right: 1px solid #f0f0f0;
-    }
-    /* Styles the Install button */
-    .install-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 15px;
-        border: 2px solid #FF4B4B;
-        text-align: center;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    }
+        header {visibility: hidden !important;}
+        footer {visibility: hidden !important;}
+        .stDeployButton {display:none !important;}
+        #viewer-badge {display: none !important;}
+        /* The Mobile Phone look */
+        .stApp { 
+            max-width: 450px; 
+            margin: 0 auto; 
+            border-left: 1px solid #f0f0f0; 
+            border-right: 1px solid #f0f0f0;
+        }
     </style>
-    
-    <link rel="manifest" href="./manifest.json">
     """, unsafe_allow_html=True)
 
-# AI CONFIG - Using stable model name
+# AI CONFIG
 if "API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["API_KEY"])
     model = genai.GenerativeModel('gemini-1.5-flash') 
@@ -62,12 +51,6 @@ if st.session_state.user_profile is None:
 
 # --- 4. THE MAIN INTERFACE ---
 st.header(f"🛡️ {st.session_state.user_profile['name']}")
-
-# Sidebar for Reboot (hidden by default CSS, accessible if needed)
-with st.sidebar:
-    if st.button("🔄 REBOOT SYSTEM"):
-        st.session_state.clear()
-        st.rerun()
 
 tab1, tab2 = st.tabs(["💬 Chat", "📸 Scanner"])
 
