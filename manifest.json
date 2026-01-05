@@ -1,15 +1,17 @@
 {
   "short_name": "HealthPlus",
   "name": "Project Health Plus: Pill Scanner",
+  "description": "AI Medical Mentor and Pill Scanner for seniors.",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3022/3022807.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
+  "theme_color": "#FF4B4B",
   "background_color": "#ffffff"
 }
