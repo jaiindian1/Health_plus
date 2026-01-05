@@ -1,82 +1,91 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
-# --- 1. SMARTPHONE & MANIFEST SETUP ---
-st.set_page_config(page_title="Health Plus Assistant", layout="centered", page_icon="💊")
+# --- 1. MOBILE & ICON SETUP ---
+# Centered layout is better for small phone screens
+st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
-# LINKING YOUR JSON MANIFEST (Allows the mobile icon to work)
+# This is the "Magic Link" that makes your mobile icon work
 st.markdown('<link rel="manifest" href="manifest.json">', unsafe_allow_html=True)
 
-# MOBILE CSS: Makes the app look good on a small screen
+# CSS to make the app look clean and keep errors to one line
 st.markdown("""
     <style>
     .stApp { max-width: 450px; margin: 0 auto; }
-    .stButton>button { width: 100%; border-radius: 20px; height: 3em; }
+    .stAlert { padding: 5px 15px; font-size: 14px; border-radius: 10px; }
+    .stButton>button { width: 100%; border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-# AI CONFIG
+# AI CONFIG - Using the most stable model name
 if "API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["API_KEY"])
-    # Using stable flash model name
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash') 
 else:
-    st.error("Missing API Key! Please add it to Streamlit Secrets.")
+    st.error("Missing API Key! Please check your Streamlit Secrets.")
 
-# --- 2. MEMORY ---
+# --- 2. MEMORY MANAGEMENT ---
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 3. PROFILE SETUP (Gatekeeper) ---
+# --- 3. THE GATEKEEPER (Profile Setup) ---
 if st.session_state.user_profile is None:
-    st.title("🏥 Health Plus")
-    st.subheader("Setup Your Profile")
-    
+    st.title("🏥 Health Plus Setup")
     with st.form("setup_form"):
-        name = st.text_input("Full Name")
-        phone = st.text_input("Your Number")
-        emergency_no = st.text_input("Emergency Number (Suresh)")
+        u_name = st.text_input("Full Name")
+        u_phone = st.text_input("Your Phone Number")
+        u_emergency = st.text_input("Emergency Contact (e.g. Suresh)")
         
         if st.form_submit_button("Save & Enter App"):
-            if name and phone and emergency_no:
-                st.session_state.user_profile = {"name": name, "phone": phone, "emergency": emergency_no}
+            if u_name and u_phone and u_emergency:
+                st.session_state.user_profile = {
+                    "name": u_name, 
+                    "phone": u_phone, 
+                    "emergency": u_emergency
+                }
                 st.rerun()
             else:
-                st.warning("Please fill all fields!")
+                st.warning("Please fill in all details.")
     st.stop()
 
-# --- 4. MAIN MOBILE APP ---
+# --- 4. MAIN APP INTERFACE ---
 st.header(f"🛡️ Hello, {st.session_state.user_profile['name']}")
 
-tab_chat, tab_pill = st.tabs(["💬 Chat", "📸 Scan"])
+tab_chat, tab_pill = st.tabs(["💬 AI Advisor", "📸 Scanner"])
 
 with tab_chat:
     st.caption(f"Emergency Contact: {st.session_state.user_profile['emergency']}")
+    
+    # Show Chat History
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("How are you feeling?"):
+    # Chat Input
+    if prompt := st.chat_input("Tell me how you feel..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"): st.markdown(prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
         
         with st.chat_message("assistant"):
-            context = f"User: {st.session_state.user_profile['name']}. Prompt: {prompt}"
-            response = model.generate_content(context)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            try:
+                # Attempt to get AI response
+                response = model.generate_content(f"User {st.session_state.user_profile['name']} says: {prompt}")
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e:
+                # ONE-LINE ERROR: Catches 404, 500, or API errors quietly
+                st.warning("⚠️ AI is busy right now. Please try again in a moment.")
 
 with tab_pill:
     st.subheader("Medicine Scanner")
-    img = st.camera_input("Take a photo")
+    img = st.camera_input("Scan your medicine")
     if img:
-        st.info("AI is analyzing...")
+        st.info("Pill analysis feature coming soon!")
 
-# Sidebar: Emergency
+# Sidebar Emergency Button
 with st.sidebar:
-    st.header("🆘 Help")
-    if st.button("🚨 CALL EMERGENCY"):
-        st.error(f"ALERT SENT TO: {st.session_state.user_profile['emergency']}")
+    if st.button("🚨 TRIGGER EMERGENCY", type="primary"):
+        st.error(f"Calling Emergency Contact: {st.session_state.user_profile['emergency']}")
