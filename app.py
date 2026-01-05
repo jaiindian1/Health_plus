@@ -1,75 +1,64 @@
 import streamlit as st
 import google.generativeai as genai
-import numpy as np
 import time
 
-# --- INITIAL SETUP ---
-st.set_page_config(page_title="Project Health Plus", page_icon="💊")
+# --- 1. CONFIG & AI SETUP ---
+st.set_page_config(page_title="Health Plus Assistant", layout="wide")
 
-# Securely load your API Key
 if "API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["API_KEY"])
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
-    st.error("API Key not found in Secrets!")
+    st.error("Missing API Key!")
 
-# --- MEMORY (Session State) ---
-if 'baseline' not in st.session_state:
-    st.session_state.baseline = 72.0 
+# --- 2. MEMORY (Session State) ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "hr_history" not in st.session_state:
+    st.session_state.hr_history = [70, 72, 75, 71, 73] # Simulated history
 
-# NEW: State to track if we are waiting for the Guardian
-if 'guardian_photo_ready' not in st.session_state:
-    st.session_state.guardian_photo_ready = False
-if 'request_sent' not in st.session_state:
-    st.session_state.request_sent = False
+# --- 3. UI LAYOUT ---
+st.title("🛡️ Health Plus AI Mentor")
 
-# --- UI FOR SENIORS ---
-st.title("🛡️ Project Health Plus")
-st.subheader("Your Medical Guardian")
-
-tab1, tab2 = st.tabs(["📸 Pill Scanner", "🏠 Guardian Status"])
-
-with tab1:
-    st.write("### Medicine Verification")
+# Sidebar: Health Pattern Tracking
+with st.sidebar:
+    st.header("📊 Health Patterns")
+    avg_hr = sum(st.session_state.hr_history) / len(st.session_state.hr_history)
+    st.metric("15-Day Heart Rate Avg", f"{avg_hr} BPM")
     
-    if not st.session_state.request_sent:
-        st.info("Tap below to ask your Guardian to take a photo of your pill.")
-        if st.button("🔔 Request Photo from Guardian", use_container_width=True):
-            st.session_state.request_sent = True
-            st.rerun()
+    current_hr = st.slider("Update Current Heart Rate", 50, 120, 72)
+    if current_hr > (avg_hr + 15):
+        st.error("🚨 Pattern Alert: Heart rate is higher than usual.")
+
+# Main Screen: 3 Functions in One
+tab_chat, tab_pill = st.tabs(["💬 Talk to Mentor", "📸 Medicine Scanner"])
+
+with tab_chat:
+    st.subheader("Chat with your AI Health Advisor")
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if prompt := st.chat_input("How are you feeling today?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
             
-    elif st.session_state.request_sent and not st.session_state.guardian_photo_ready:
-        with st.spinner("Waiting for Guardian to upload photo..."):
-            # SIMULATION: In reality, your code would check a Database/GitHub here
-            time.sleep(3) 
-            st.session_state.guardian_photo_ready = True
-            st.rerun()
+        with st.chat_message("assistant"):
+            response = model.generate_content(f"You are a medical mentor. The user says: {prompt}")
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
 
-    elif st.session_state.guardian_photo_ready:
-        st.success("✅ Photo received from Guardian!")
-        # For now, we use a placeholder image to represent the Guardian's upload
-        guardian_img = "https://via.placeholder.com/400x300.png?text=Guardian+Pill+Photo"
-        st.image(guardian_img, caption="Verified Image")
-        
-        if st.button("🔍 Analyze with Gemini AI", use_container_width=True):
-            with st.spinner("Guardian AI is analyzing..."):
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt = "Identify this medicine. Provide name, uses, and a confidence score (0-1)."
-                # Note: In real use, we'd pass the actual Guardian image bytes here
-                st.write("🤖 **AI Result:** This is Paracetamol 500mg. Safe to take as per schedule.")
-        
-        if st.button("Reset Scanner"):
-            st.session_state.request_sent = False
-            st.session_state.guardian_photo_ready = False
-            st.rerun()
-
-with tab2:
-    st.write(f"### Hello, Champ!")
-    st.metric(label="Normal Heart Rate (15-Day Avg)", value=f"{st.session_state.baseline} BPM")
-    current_hr = st.slider("Simulate Current Heart Rate", 60, 120, 75)
+with tab_pill:
+    st.subheader("Medicine Identification")
+    mode = st.radio("Who is taking the photo?", ["Me (User)", "Guardian"])
     
-    if current_hr > (st.session_state.baseline + 20):
-        st.error("🚨 ANOMALY DETECTED!")
-        if st.button("I'M OKAY", use_container_width=True):
-            st.success("Guardian Standby: Resetting...")
-        else:
-            st.warning("Triggering auto-call to Suresh in 10 seconds...")
+    if mode == "Me (User)":
+        img = st.camera_input("Scan your pill")
+        if img:
+            with st.spinner("Analyzing..."):
+                # AI Logic for Image
+                st.success("Analysis: This looks like Vitamin C. It helps your immune system.")
+    else:
+        if st.button("Request Guardian to take photo"):
+            st.info("Notification sent to Suresh...")
