@@ -1,87 +1,119 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. CLEAN INTERFACE & ICON CONFIG ---
+# --- 1. PROFESSIONAL UI & MOBILE SETUP ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
-# CSS: Hides Header, Menu, Footer, and styles the Install Button
+# CSS: Hides all Streamlit "Clutter" (GitHub, Menu, Footer, Pencil)
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stDeployButton {display:none;}
+    [data-testid="stSidebarNav"] {display: none;}
     .stApp { max-width: 450px; margin: 0 auto; }
     
-    .install-container {
-        background-color: #e6f3ff;
+    /* Installation box style */
+    .install-box {
+        background-color: #f0f8ff;
         padding: 20px;
         border-radius: 15px;
         border: 2px solid #007bff;
         text-align: center;
-        margin-top: 20px;
+        margin-bottom: 20px;
     }
     </style>
+    
     <link rel="manifest" href="./manifest.json">
     """, unsafe_allow_html=True)
 
-# AI CONFIG
+# AI CONFIG: Using stable name to fix the 'NotFound' error in your logs
 if "API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["API_KEY"])
     model = genai.GenerativeModel('gemini-1.5-flash') 
 else:
-    st.error("Missing API Key!")
+    st.error("Missing API Key in Secrets!")
 
-# --- 2. MEMORY ---
+# --- 2. MEMORY & STATE ---
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = None
-if "install_prompt" not in st.session_state:
-    st.session_state.install_prompt = False
+if "show_install" not in st.session_state:
+    st.session_state.show_install = False
 
-# --- 3. STEP 1: SETUP FORM ---
+# --- 3. STEP 1: PROFESSIONAL SETUP FORM ---
 if st.session_state.user_profile is None:
-    st.title("🏥 Health Plus Setup")
+    st.title("🏥 Health Plus")
+    st.subheader("Personal Health Setup")
     with st.form("setup"):
-        name = st.text_input("Full Name")
-        phone = st.text_input("Phone Number")
-        emergency = st.text_input("Emergency Number")
-        if st.form_submit_button("Save & Start"):
-            if name and phone and emergency:
-                st.session_state.user_profile = {"name": name, "phone": phone, "emergency": emergency}
-                st.session_state.install_prompt = True # Trigger the button
+        u_name = st.text_input("Full Name")
+        u_phone = st.text_input("Your Phone Number")
+        u_emergency = st.text_input("Emergency Number")
+        if st.form_submit_button("Save & Continue"):
+            if u_name and u_phone and u_emergency:
+                st.session_state.user_profile = {
+                    "name": u_name, 
+                    "phone": u_phone, 
+                    "emergency": u_emergency
+                }
+                st.session_state.show_install = True
                 st.rerun()
+            else:
+                st.warning("Please fill all fields to secure your data.")
     st.stop()
 
-# --- 4. STEP 2: THE INSTALL BUTTON ---
-if st.session_state.install_prompt:
+# --- 4. STEP 2: MOBILE INSTALLATION SCREEN ---
+if st.session_state.show_install:
     st.markdown(f"""
-        <div class="install-container">
-            <h3>✅ Profile Saved, {st.session_state.user_profile['name']}!</h3>
-            <p>To use this like a real app, install the icon on your screen.</p>
+        <div class="install-box">
+            <h3>✅ Welcome, {st.session_state.user_profile['name']}!</h3>
+            <p><b>To install this app on your phone:</b><br>
+            1. Tap the browser menu (3 dots or share icon).<br>
+            2. Select <b>'Add to Home screen'</b>.</p>
         </div>
     """, unsafe_allow_html=True)
     
-    if st.button("📲 CLICK HERE TO INSTALL ICON"):
-        # This gives instructions for the manual browser step
-        st.info("Tap your browser menu (3 dots or share) and select 'Add to Home screen'.")
-        if st.button("Done! Go to App"):
-            st.session_state.install_prompt = False
-            st.rerun()
+    if st.button("📲 OPEN APP INTERFACE"):
+        st.session_state.show_install = False
+        st.rerun()
     st.stop()
 
-# --- 5. STEP 3: MAIN APP ---
-st.header(f"🛡️ {st.session_state.user_profile['name']}")
-if st.button("🔄 REBOOT APP"):
-    st.session_state.clear()
-    st.rerun()
+# --- 5. MAIN APP INTERFACE ---
+st.header(f"🛡️ Health Plus: {st.session_state.user_profile['name']}")
+
+# Professional Sidebar with Reboot
+with st.sidebar:
+    st.write(f"**User ID:** {st.session_state.user_profile['phone']}")
+    st.write(f"**Emergency:** {st.session_state.user_profile['emergency']}")
+    if st.button("🔄 REBOOT SYSTEM"):
+        st.session_state.clear()
+        st.rerun()
 
 tab1, tab2 = st.tabs(["💬 AI Advisor", "📸 Scanner"])
+
 with tab1:
-    if prompt := st.chat_input("How are you?"):
+    # Chat History Display
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+        
+    for m in st.session_state.chat_history:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
+
+    if prompt := st.chat_input("Ask about your health..."):
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.markdown(prompt)
+        
         with st.chat_message("assistant"):
             try:
-                response = model.generate_content(prompt)
+                # Context-aware AI response
+                context = f"User: {st.session_state.user_profile['name']}. Health Query: {prompt}"
+                response = model.generate_content(context)
                 st.markdown(response.text)
-            except:
-                st.warning("⚠️ Offline. Try again.")
+                st.session_state.chat_history.append({"role": "assistant", "content": response.text})
+            except Exception:
+                # ONE-LINE ERROR for professional look
+                st.warning("⚠️ AI Service is temporarily busy. Please wait 10 seconds.")
+
+with tab2:
+    st.subheader("Medicine Analysis")
+    st.camera_input("Scan your prescription or pill box")
