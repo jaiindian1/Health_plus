@@ -4,13 +4,13 @@
   "description": "AI Medical Mentor and Pill Scanner.",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3022/3022807.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/?",
   "display": "standalone",
   "theme_color": "#FF4B4B",
   "background_color": "#ffffff"
