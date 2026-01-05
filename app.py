@@ -1,42 +1,31 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. THE ARCHITECT'S INTERFACE ---
+# --- 1. DESIGN & IDENTITY ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
-# Improved CSS + Manifest Linking
 st.markdown("""
-    <head>
-        <link rel="manifest" href="./manifest.json?v=1">
-        <meta name="theme-color" content="#FF4B4B">
-    </head>
     <style>
-        header {visibility: hidden !important;}
-        footer {visibility: hidden !important;}
-        .stDeployButton {display:none !important;}
-        #viewer-badge {display: none !important;}
-        /* The Mobile Phone look */
-        .stApp { 
-            max-width: 450px; 
-            margin: 0 auto; 
-            border-left: 1px solid #f0f0f0; 
-            border-right: 1px solid #f0f0f0;
-        }
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    .stDeployButton {display:none !important;}
+    .stApp { max-width: 450px; margin: 0 auto; }
     </style>
+    <link rel="manifest" href="./manifest.json?v=3">
     """, unsafe_allow_html=True)
 
-# AI CONFIG
+# --- 2. AI CONFIG ---
 if "API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
-    st.error("Missing API Key!")
+    st.error("Missing API_KEY in Streamlit Secrets!")
 
-# --- 2. LOGIC & STATE ---
+# --- 3. USER STATE ---
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = None
 
-# --- 3. THE SETUP FORM ---
+# --- 4. THE SETUP FORM ---
 if st.session_state.user_profile is None:
     st.title("🏥 Health Plus")
     with st.form("setup"):
@@ -49,7 +38,7 @@ if st.session_state.user_profile is None:
                 st.rerun()
     st.stop()
 
-# --- 4. THE MAIN INTERFACE ---
+# --- 5. MAIN INTERFACE ---
 st.header(f"🛡️ {st.session_state.user_profile['name']}")
 
 tab1, tab2 = st.tabs(["💬 Chat", "📸 Scanner"])
@@ -62,8 +51,12 @@ with tab1:
             try:
                 response = model.generate_content(prompt)
                 st.markdown(response.text)
-            except:
-                st.warning("⚠️ AI is busy. Please wait 10 seconds.")
+            except Exception as e:
+                # THIS IS THE TRUTH MICROPHONE
+                st.error(f"Developer Log: {e}")
 
 with tab2:
     st.camera_input("Scan your medicine")
+    if st.button("🔄 REBOOT SYSTEM"):
+        st.session_state.clear()
+        st.rerun()
