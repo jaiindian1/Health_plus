@@ -4,7 +4,6 @@ import google.generativeai as genai
 # --- 1. DESIGN & IDENTITY ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
-# The "Invisibility Cloak" + PWA Link
 st.markdown("""
     <style>
     header {visibility: hidden !important;}
@@ -12,15 +11,29 @@ st.markdown("""
     .stDeployButton {display:none !important;}
     .stApp { max-width: 450px; margin: 0 auto; }
     </style>
-    <link rel="manifest" href="./manifest.json?v=5">
+    <link rel="manifest" href="./manifest.json?v=6">
     """, unsafe_allow_html=True)
 
-# --- 2. AI CONFIG (THE STABLE BRAIN) ---
+# --- 2. AI CONFIG (THE UNIVERSAL SEARCH) ---
 if "API_KEY" in st.secrets:
     try:
         genai.configure(api_key=st.secrets["API_KEY"])
-        # We use 'gemini-pro' because it is the most compatible with all API versions
-        model = genai.GenerativeModel('gemini-pro')
+        
+        # PROACTIVE FIX: We try the 3 most common names to bypass the 404 error
+        model_found = False
+        for model_name in ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-pro']:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # Test the model with a tiny request
+                model.generate_content("test")
+                model_found = True
+                break
+            except:
+                continue
+        
+        if not model_found:
+            st.error("Could not find a compatible Gemini model. Check your API permissions!")
+            
     except Exception as e:
         st.error(f"Configuration Error: {e}")
 else:
@@ -58,7 +71,6 @@ with tab1:
                 response = model.generate_content(prompt)
                 st.markdown(response.text)
             except Exception as e:
-                # This will now show the REAL error if gemini-pro also fails
                 st.error(f"Developer Log: {e}")
 
 with tab2:
