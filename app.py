@@ -3,11 +3,11 @@ import google.generativeai as genai
 import os
 
 # --- 1. DESIGN & IDENTITY ---
-# This changes the browser tab title and the "Logo" to a pill/heart
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="❤️")
 
-# Clean Mobile Look (Hiding Streamlit's default headers)
+# This block links your manifest.json and hides Streamlit UI for a "Real App" feel
 st.markdown("""
+    <link rel="manifest" href="./manifest.json?v=10">
     <style>
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
@@ -16,7 +16,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. PERSISTENT MEMORY (The "Filing Cabinet") ---
+# --- 2. PERSISTENT MEMORY ---
 USER_FILE = "user_data.txt"
 
 def save_user_to_disk(profile):
@@ -33,16 +33,16 @@ def load_user_from_disk():
             return None
     return None
 
-# --- 3. AI CONFIG (THE FAST BRAIN) ---
+# --- 3. AI CONFIG (OPTIMIZED) ---
 @st.cache_resource
 def get_ai_model():
     if "API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["API_KEY"])
-        # We try the most stable 2026 model first
-        for model_name in ['gemini-1.5-flash', 'gemini-pro']:
+        # Checking for the most common 2026 models
+        for m_name in ['gemini-1.5-flash', 'gemini-pro']:
             try:
-                m = genai.GenerativeModel(model_name)
-                m.generate_content("test") # Wake up call
+                m = genai.GenerativeModel(m_name)
+                m.generate_content("test")
                 return m
             except:
                 continue
@@ -62,54 +62,40 @@ if st.session_state.user_profile is None:
         name = st.text_input("Full Name")
         phone = st.text_input("Your Phone Number")
         emergency = st.text_input("Emergency Contact Number")
-        if st.form_submit_button("Start Protection"):
+        if st.form_submit_button("Save & Start Protection"):
             if name and phone and emergency:
                 profile = {"name": name, "phone": phone, "emergency": emergency}
                 save_user_to_disk(profile)
                 st.session_state.user_profile = profile
                 st.rerun()
-            else:
-                st.warning("Please fill all details so I can keep you safe!")
     st.stop()
 
 # --- 6. MAIN INTERFACE ---
-st.header(f"🛡️ {st.session_state.user_profile['name']}'s Health")
+st.header(f"🛡️ {st.session_state.user_profile['name']}")
 
 tab1, tab2, tab3 = st.tabs(["💬 AI Chat", "📸 Scanner", "⚙️ Profile"])
 
 with tab1:
     st.caption(f"Emergency Contact: {st.session_state.user_profile['emergency']}")
-    
-    # Simple Chat logic
-    if prompt := st.chat_input("How are you feeling right now?"):
+    if prompt := st.chat_input("How are you feeling?"):
         with st.chat_message("user"):
             st.markdown(prompt)
-        
         with st.chat_message("assistant"):
             if model:
-                try:
-                    # System instruction inside the prompt
-                    context = f"Instruction: You are a medical assistant for {st.session_state.user_profile['name']}. If they mention a life-threatening emergency, tell them to call {st.session_state.user_profile['emergency']} immediately. Message: {prompt}"
-                    response = model.generate_content(context)
-                    st.markdown(response.text)
-                except Exception as e:
-                    st.error("The AI Brain is resting. Try again in a minute.")
+                ctx = f"You are a medical assistant for {st.session_state.user_profile['name']}. If emergency, call {st.session_state.user_profile['emergency']}. Message: {prompt}"
+                response = model.generate_content(ctx)
+                st.markdown(response.text)
             else:
-                st.error("AI not connected. Check your API Key.")
+                st.error("AI Brain not found. Check Secrets.")
 
 with tab2:
     st.subheader("Medicine Scanner")
-    st.camera_input("Take a photo of your medicine")
-    st.info("Scanner will analyze the dose and safety...")
+    st.camera_input("Scan your medicine")
 
 with tab3:
-    st.subheader("Profile Settings")
-    st.write(f"**Name:** {st.session_state.user_profile['name']}")
-    st.write(f"**Phone:** {st.session_state.user_profile['phone']}")
+    st.subheader("Profile")
     st.write(f"**Emergency:** {st.session_state.user_profile['emergency']}")
-    
-    if st.button("🗑️ Log Out / Reset App"):
-        if os.path.exists(USER_FILE):
-            os.remove(USER_FILE)
+    if st.button("🗑️ Reset All Data"):
+        if os.path.exists(USER_FILE): os.remove(USER_FILE)
         st.session_state.clear()
         st.rerun()
