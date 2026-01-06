@@ -1,118 +1,58 @@
 import streamlit as st
-import os
-from datetime import datetime
+import streamlit.components.v1 as components
 
-# --- 1. THE ANDROID & PROFESSIONAL SHIELD ---
-# Sets the tab icon and title
-st.set_page_config(page_title="Health Plus", layout="centered", page_icon="❤️")
+# --- 1. AGENTIC LOCATION SCRIPT ---
+# This script asks the phone for GPS coordinates
+loc_script = """
+<script>
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition);
+  }
+}
+function showPosition(position) {
+  const lat = position.coords.latitude;
+  const lon = position.coords.longitude;
+  window.parent.postMessage({
+    type: 'streamlit:set_component_value',
+    value: {lat: lat, lon: lon}
+  }, '*');
+}
+getLocation();
+</script>
+"""
 
-# Nuclear CSS: Hides 'Manage App', Header, Footer, and Deploy button
-# v=110 forces Android Chrome to refresh the Manifest memory
-st.markdown("""
-    <style>
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    .stDeployButton {display:none !important;}
-    #MainMenu {visibility: hidden !important;}
-    div[data-testid="stStatusWidget"], .viewerBadge_container__1QSob {display: none !important;}
+# --- 2. THE APP LOGIC ---
+st.title("🛡️ Agentic Health Guardian")
+
+# Hidden component to get location
+location_data = components.html(loc_script, height=0)
+
+# Simulate user profile data
+em_phone = "9876543210" # Replace with your saved emergency number
+
+if prompt := st.chat_input("Describe your feeling..."):
+    st.chat_message("user").write(prompt)
     
-    /* Emergency Button Styling */
-    .emergency-btn {
-        background-color: #ff4b4b;
-        color: white !important;
-        text-align: center;
-        padding: 20px;
-        border-radius: 15px;
-        font-weight: bold;
-        text-decoration: none;
-        display: block;
-        margin-bottom: 20px;
-        font-size: 20px;
-        border: 2px solid white;
-    }
-    </style>
-    <head>
-        <link rel="manifest" href="./manifest.json?v=110">
-        <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
-        <meta name="theme-color" content="#FF4B4B">
-    </head>
-    """, unsafe_allow_html=True)
-
-# --- 2. DATA SYSTEM ---
-USER_FILE = "user_data.txt"
-
-def load_user():
-    if os.path.exists(USER_FILE):
-        try:
-            with open(USER_FILE, "r") as f:
-                d = f.read().split("|")
-                return {"name": d[0], "phone": d[1], "emergency": d[2], "signup_date": d[3]}
-        except: return None
-    return None
-
-if "user_profile" not in st.session_state:
-    st.session_state.user_profile = load_user()
-
-# --- 3. SETUP GATEKEEPER ---
-if st.session_state.user_profile is None:
-    st.title("🏥 Health Plus")
-    st.subheader("Setup your Emergency Guardian")
-    with st.form("setup"):
-        name = st.text_input("Full Name")
-        phone = st.text_input("Your Phone")
-        em_phone = st.text_input("Emergency Contact Number")
-        if st.form_submit_button("Start Protection"):
-            if name and phone and em_phone:
-                profile = {"name": name, "phone": phone, "emergency": em_phone, "signup_date": datetime.now().strftime("%Y-%m-%d")}
-                with open(USER_FILE, "w") as f:
-                    f.write(f"{profile['name']}|{profile['phone']}|{profile['emergency']}|{profile['signup_date']}")
-                st.session_state.user_profile = profile
-                st.rerun()
-    st.info("📲 TO INSTALL: Tap 3-dots (⋮) -> 'Install App'")
-    st.stop()
-
-# --- 4. THE PROFESSIONAL DASHBOARD ---
-profile = st.session_state.user_profile
-st.title(f"🛡️ Guardian: {profile['name']}")
-
-# 15-Day Calibration logic
-start_dt = datetime.strptime(profile["signup_date"], "%Y-%m-%d")
-days_passed = (datetime.now() - start_dt).days
-
-if days_passed < 15:
-    st.warning(f"🧬 Calibration Mode: Day {days_passed + 1}/15")
-    st.progress((days_passed + 1) / 15)
-
-tab1, tab2, tab3 = st.tabs(["💬 AI Chat", "📸 Scanner", "⚙️ Profile"])
-
-with tab1:
-    # Always visible Panic Button
-    st.markdown(f'<a href="tel:{profile["emergency"]}" class="emergency-btn">🚨 CALL EMERGENCY NOW</a>', unsafe_allow_html=True)
-    
-    if prompt := st.chat_input("How are you feeling?"):
-        st.chat_message("user").write(prompt)
+    if "pain" in prompt.lower() or "severe" in prompt.lower():
+        st.error("🚨 AGENTIC PROTOCOL ACTIVATED")
         
-        # EMERGENCY TRIGGER LOGIC
-        danger_keywords = ["pain", "chest", "heart", "breath", "blood", "severe"]
-        if any(word in prompt.lower() for word in danger_keywords):
-            st.error("⚠️ CRITICAL SYMPTOM DETECTED")
-            st.markdown(f"""
-                <div style="background-color:#ff4b4b; padding:20px; border-radius:10px; text-align:center;">
-                    <h2 style="color:white;">DIALING EMERGENCY...</h2>
-                    <a href="tel:{profile['emergency']}" style="color:yellow; font-size:30px; font-weight:bold;">TAP HERE TO CALL {profile['emergency']}</a>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.chat_message("assistant").write("I am monitoring your symptoms. Please keep me updated.")
-
-with tab2:
-    st.subheader("Medicine Scanner")
-    st.camera_input("Scan your pills")
-
-with tab3:
-    st.subheader("Account Settings")
-    st.write(f"**Emergency Number:** {profile['emergency']}")
-    if st.button("Reset / Logout"):
-        if os.path.exists(USER_FILE): os.remove(USER_FILE)
-        st.session_state.clear()
-        st.rerun()
+        # Get location from the script
+        lat = 27.89  # Default or fetched
+        lon = 78.08  # Default or fetched
+        google_maps_link = f"https://www.google.com/maps?q={lat},{lon}"
+        
+        sms_body = f"EMERGENCY! {profile['name']} needs help. Location: {google_maps_link}"
+        
+        # The Agentic Action Box
+        st.markdown(f"""
+            <div style="background-color:#ffe6e6; padding:20px; border-radius:15px; border:2px solid red;">
+                <h3 style="color:red;">Taking Action Now:</h3>
+                <a href="sms:{em_phone}?body={sms_body}" style="display:block; padding:15px; background:blue; color:white; border-radius:10px; margin-bottom:10px; text-align:center; text-decoration:none;">
+                    ✉️ SEND LOCATION SMS TO CONTACT
+                </a>
+                <a href="tel:{em_phone}" style="display:block; padding:15px; background:red; color:white; border-radius:10px; text-align:center; text-decoration:none;">
+                    📞 START EMERGENCY CALL
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
