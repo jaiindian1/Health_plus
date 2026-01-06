@@ -4,6 +4,7 @@ import google.generativeai as genai
 # --- 1. DESIGN & IDENTITY ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="💊")
 
+# The "Invisibility Cloak" (Hides Streamlit menus for a clean mobile look)
 st.markdown("""
     <style>
     header {visibility: hidden !important;}
@@ -14,25 +15,26 @@ st.markdown("""
     <link rel="manifest" href="./manifest.json?v=6">
     """, unsafe_allow_html=True)
 
-# --- 2. AI CONFIG (THE UNIVERSAL SEARCH) ---
+# --- 2. AI CONFIG (THE DIAGNOSTIC BRAIN) ---
 if "API_KEY" in st.secrets:
     try:
         genai.configure(api_key=st.secrets["API_KEY"])
         
-        # PROACTIVE FIX: We try the 3 most common names to bypass the 404 error
+        # This part asks Google exactly which models your key can use
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
         model_found = False
-        for model_name in ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-pro']:
-            try:
-                model = genai.GenerativeModel(model_name)
-                # Test the model with a tiny request
-                model.generate_content("test")
+        # We search for our preferred models in your allowed list
+        for target in ['models/gemini-1.5-flash', 'models/gemini-pro', 'models/gemini-1.5-flash-latest']:
+            if target in available_models:
+                model = genai.GenerativeModel(target)
                 model_found = True
                 break
-            except:
-                continue
         
-        if not model_found:
-            st.error("Could not find a compatible Gemini model. Check your API permissions!")
+        # If our favorites aren't there, we grab the first one that exists
+        if not model_found and available_models:
+            model = genai.GenerativeModel(available_models[0])
+            model_found = True
             
     except Exception as e:
         st.error(f"Configuration Error: {e}")
@@ -46,6 +48,7 @@ if "user_profile" not in st.session_state:
 # --- 4. THE SETUP FORM ---
 if st.session_state.user_profile is None:
     st.title("🏥 Health Plus")
+    st.write("Please set up your profile to begin.")
     with st.form("setup"):
         name = st.text_input("Full Name")
         phone = st.text_input("Phone Number")
@@ -63,18 +66,25 @@ tab1, tab2 = st.tabs(["💬 Chat", "📸 Scanner"])
 
 with tab1:
     st.caption(f"Emergency Contact: {st.session_state.user_profile['emergency']}")
+    
     if prompt := st.chat_input("Tell me how you feel..."):
         with st.chat_message("user"): 
             st.markdown(prompt)
+        
         with st.chat_message("assistant"):
             try:
-                response = model.generate_content(prompt)
+                # We add context so the AI knows who it is talking to
+                full_prompt = f"User: {st.session_state.user_profile['name']}. Message: {prompt}"
+                response = model.generate_content(full_prompt)
                 st.markdown(response.text)
             except Exception as e:
-                st.error(f"Developer Log: {e}")
+                st.error(f"AI Error: {e}")
 
 with tab2:
+    st.subheader("Medicine Scanner")
     st.camera_input("Scan your medicine")
-    if st.button("🔄 REBOOT SYSTEM"):
+    
+    st.divider()
+    if st.button("🔄 RESET PROFILE"):
         st.session_state.clear()
         st.rerun()
