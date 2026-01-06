@@ -3,35 +3,33 @@ import google.generativeai as genai
 import os
 from datetime import datetime
 
-# --- 1. IDENTITY & LOGO ---
-# page_icon="❤️" replaces the Streamlit logo in the browser tab
+# --- 1. PROFESSIONAL UI CONFIG (HIDDEN HURDLES) ---
 st.set_page_config(page_title="Health Plus", layout="centered", page_icon="❤️")
 
-# REPLACE THIS with your actual link so the manifest works!
-APP_URL = "https://health-plus.streamlit.app" 
-
-st.markdown(f"""
-    <head>
-        <link rel="manifest" href="{APP_URL}/manifest.json?v=20">
-        <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966327.png">
-    </head>
+# This CSS hides the "Manage App", "Made with Streamlit", and the Header
+st.markdown("""
     <style>
-    header {{visibility: hidden !important;}}
-    .stApp {{ max-width: 450px; margin: 0 auto; }}
-    /* Styling for our instruction message */
-    .install-msg {{
-        background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 10px;
-        border: 1px dashed #ff4b4b;
-        text-align: center;
-        font-weight: bold;
-    }}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    [data-testid="stSidebarNav"] {display: none;}
+    /* Hides the "Manage App" floating button for users */
+    .viewerBadge_container__1QSob {display: none !important;}
     </style>
+    
+    <head>
+        <link rel="manifest" href="./manifest.json?v=30">
+        <meta name="theme-color" content="#FF4B4B">
+    </head>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA LOGIC ---
+# --- 2. DATA STORAGE ---
 USER_FILE = "user_data.txt"
+
+def save_user(profile):
+    with open(USER_FILE, "w") as f:
+        f.write(f"{profile['name']}|{profile['phone']}|{profile['emergency']}|{profile['signup_date']}")
 
 def load_user():
     if os.path.exists(USER_FILE):
@@ -42,10 +40,11 @@ def load_user():
         except: return None
     return None
 
+# Initialize session
 if "user_profile" not in st.session_state:
     st.session_state.user_profile = load_user()
 
-# --- 3. THE SETUP FORM ---
+# --- 3. THE GATEKEEPER (FORM) ---
 if st.session_state.user_profile is None:
     st.title("🏥 Health Plus")
     with st.form("setup"):
@@ -58,21 +57,35 @@ if st.session_state.user_profile is None:
                     "name": name, "phone": phone, "emergency": emergency,
                     "signup_date": datetime.now().strftime("%Y-%m-%d")
                 }
-                with open(USER_FILE, "w") as f:
-                    f.write(f"{profile['name']}|{profile['phone']}|{profile['emergency']}|{profile['signup_date']}")
+                save_user(profile)
                 st.session_state.user_profile = profile
                 st.rerun()
+    
+    st.info("📲 TO INSTALL: Click 3-dots (⋮) at top right & select 'Install App'")
+    st.stop() # App stops here ONLY if there is no user profile
 
-    # --- THE INSTRUCTION MESSAGE YOU ASKED FOR ---
-    st.markdown("""
-        <div class="install-msg">
-            📲 TO INSTALL ON MOBILE:<br>
-            1. Click the 3 DOTS (⋮) at the top right.<br>
-            2. Tap "Add to Home Screen" or "Install App".
-        </div>
-    """, unsafe_allow_html=True)
-    st.stop()
+# --- 4. THE PROFESSIONAL APP CONTENT (Everything after Setup) ---
+st.header(f"🛡️ Health Plus: {st.session_state.user_profile['name']}")
 
-# --- 4. MAIN INTERFACE (Only shows after setup) ---
-st.success(f"Welcome back, {st.session_state.user_profile['name']}!")
-# ... (rest of your chat code goes here)
+# Calibration Logic
+start_dt = datetime.strptime(st.session_state.user_profile["signup_date"], "%Y-%m-%d")
+days_passed = (datetime.now() - start_dt).days
+
+if days_passed < 15:
+    st.warning(f"🧬 Calibration: Day {days_passed + 1}/15")
+    st.progress((days_passed + 1) / 15)
+
+tab1, tab2, tab3 = st.tabs(["💬 AI Chat", "📸 Scanner", "⚙️ Settings"])
+
+with tab1:
+    st.write("How can I help you today?")
+    # Add your Chat logic here...
+
+with tab2:
+    st.camera_input("Scan Medicine")
+
+with tab3:
+    if st.button("Logout / Reset"):
+        if os.path.exists(USER_FILE): os.remove(USER_FILE)
+        st.session_state.clear()
+        st.rerun()
