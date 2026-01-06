@@ -1,16 +1,16 @@
 {
-  "short_name": "Health Plus",
   "name": "Health Plus Medical Mentor",
+  "short_name": "Health Plus",
   "description": "AI Medical Mentor and Pill Scanner.",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/?",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#FF4B4B",
   "background_color": "#ffffff"
